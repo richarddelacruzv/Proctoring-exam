@@ -8,17 +8,16 @@ import threading
 import glob
 from datetime import datetime
 from abc import ABC
-import json  # <--- Añadido para manejar el examen y respuestas
+import json 
 
 st.set_page_config(page_title="Proctoring FIEE UNI", layout="wide", page_icon="🏛️")
 
 # ==========================================
-# 0. CONFIGURACIÓN Y ESTILOS UI
+# 0. CONFIGURACIÓN Y ESTILOS 
 # ==========================================
 class Infraestructura:
     def __init__(self):
 
-        # Atributos de instancia con self.
         self.RTC_CONFIG = RTCConfiguration(
             {"iceServers": [
                 {"urls": ["stun:stun.l.google.com:19302"]},
@@ -41,7 +40,6 @@ class Infraestructura:
             "TAPAR": 2.0
         }
 
-    # Este sí se mantiene como método porque se llama en diferentes partes de la UI
     def aplicar_estilos_institucionales(self):
         st.markdown("""
         <style>
@@ -58,11 +56,10 @@ class Infraestructura:
     @st.cache_data
     def convertir_a_csv(_self, df):
         return df.to_csv(index=False).encode('utf-8')
-
-# Instanciación del objeto
+        
 infra = Infraestructura()
 # ==========================================
-# 1. MODELO DE DATOS (POO)
+# 1. MODELO DE DATOS
 # ==========================================
 
 class GestorSeguridad:
@@ -97,15 +94,14 @@ class Estudiante(Persona):
     def __init__(self, uid, nombre, materia, sala):
         super().__init__(uid, nombre)
         self.materia = materia
-        self.sala = sala # <--- Guardar referencia de sala
+        self.sala = sala
 
     def registrar_falta(self, evento, peso):
-        # Actualizar estado de la sesión
         st.session_state.puntos_sospecha += peso
-        log_file = f"log_general_proctoring.csv" # <--- Usaremos un log general para filtrar mejor
+        log_file = f"log_general_proctoring.csv" 
         
         datos = {
-            "Sala": self.sala, # <--- Campo clave para filtrar
+            "Sala": self.sala, 
             "ID": self.uid, 
             "Nombre": self.nombre, 
             "Materia": self.materia,
@@ -118,7 +114,6 @@ class Estudiante(Persona):
             df = pd.DataFrame([datos])
             df.to_csv(log_file, mode='a', index=False, header=not os.path.exists(log_file))
 
-    # --- NUEVO MÉTODO: Encapsulamiento de respuestas ---
     def enviar_respuestas(self, respuestas_dict):
         archivo = "respuestas_examen.csv"
         datos = {
@@ -131,7 +126,6 @@ class Estudiante(Persona):
             df = pd.DataFrame([datos])
             df.to_csv(archivo, mode='a', index=False, header=not os.path.exists(archivo))
 
-# --- NUEVA CLASE: Gestión del examen ---
 class GestorExamen:
     def __init__(self,sala):
         self.sala = sala
@@ -162,19 +156,15 @@ class PortalProctoring:
 
     @staticmethod
     def render():
-        infra.aplicar_estilos_institucionales() # <--- Llamada a los estilos UNI
+        infra.aplicar_estilos_institucionales() 
         PortalProctoring.setup()
-        # --- RECEPTOR DE SEÑALES JS ---
-        # Este componente recibe el string ('HOMBROS', 'CABEZA' o 'CEL')
         alerta_js = st.chat_input("Receiver", key="ia_bridge")
 
         if alerta_js:
             tipo = alerta_js.upper()
 
-            # 🔴 SI CAMBIA DE PESTAÑA → ANULAR
             if tipo == "ANULAR" and st.session_state.auth_status:
                 
-                # Actualizar estado en asistencia_general.csv
                 if os.path.exists(infra.DB_ASISTENCIA):
                     with infra.csv_lock:
                         df = pd.read_csv(infra.DB_ASISTENCIA)
@@ -191,7 +181,6 @@ class PortalProctoring:
 
             elif tipo in infra.PESOS_INFRACCION and st.session_state.auth_status:
                 peso = infra.PESOS_INFRACCION[tipo]
-                # Se añade el cuarto argumento: la sala
                 est = Estudiante(
                     st.session_state.u_id, 
                     st.session_state.u_nom, 
@@ -201,7 +190,6 @@ class PortalProctoring:
                 est.registrar_falta(f"Detección IA: {tipo}", peso)
                 st.toast(f"⚠️ Alerta {tipo} registrada (+{peso})")
 
-        # CSS para ocultar el receptor y que no estorbe en la UI
         st.markdown("""
             <style>
             .stChatInput { position: fixed; bottom: -100px; } 
@@ -230,23 +218,20 @@ class PortalProctoring:
                     nom = st.text_input("Nombre Completo")
                     cod = st.text_input("Código UNI")
                     mat = st.selectbox("Materia", ["BMA15", "BFI01", "BFI03", "POO_FINAL"])
-                    # Carga dinámica de salas creadas por el profesor
                     sala_seleccionada = st.selectbox("Sala Activa", salas_activas if salas_activas else ["No hay salas"])
                     pwd_sala = st.text_input("Contraseña de la Sala", type="password")
                     
                     if st.form_submit_button("INGRESAR"):
                         if nom and cod and sala_seleccionada != "No hay salas":
-                            # Verificación de contraseña de sala
                             if seguridad.verificar_contraseña(sala_seleccionada, pwd_sala):
                                 st.session_state.u_id = cod
                                 st.session_state.u_nom = nom
                                 st.session_state.u_mat = mat
-                                st.session_state.u_sala = sala_seleccionada  # <--- GUARDAR LA SALA
+                                st.session_state.u_sala = sala_seleccionada
                                 st.session_state.auth_status = True
                                 
-                                # Registro inicial de asistencia
                                 asistencia = {
-                                    "Sala": sala_seleccionada,  # <--- COLUMNA NUEVA
+                                    "Sala": sala_seleccionada,  
                                     "ID": cod, "Nombre": nom, "Materia": mat,
                                     "Hora": datetime.now().strftime("%H:%M:%S"), "Estado": "PRESENTE"
                                 }
@@ -262,7 +247,6 @@ class PortalProctoring:
         else:
             st.markdown(f"<h2 style='color: #800000; border-bottom: 2px solid #800000; padding-bottom: 10px;'>✍️ Examen: {st.session_state.u_mat}</h2>", unsafe_allow_html=True)
             
-            # --- NUEVO LAYOUT A DOS COLUMNAS ---
             col_izq, col_der = st.columns([2.5, 1])
             
             with col_izq:
@@ -290,7 +274,6 @@ class PortalProctoring:
             with col_der:
                 st.markdown("<div style='background: #e3f2fd; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 15px;'>🛡️ <b>IA Activa</b></div>", unsafe_allow_html=True)
                 
-                # TU CÓDIGO WEBRTC ORIGINAL, INTACTO
                 webrtc_streamer(
                     key="proctor", 
                     mode=WebRtcMode.SENDRECV,
@@ -308,7 +291,6 @@ class PortalProctoring:
                 st.metric("PUNTAJE RIESGO", f"{round(st.session_state.puntos_sospecha, 2)} pts")
                 st.write(f"**Alumno:** {st.session_state.u_nom}")
                 
-                # --- NUEVA LÓGICA DE RECOLECCIÓN DE RESPUESTAS ---
                 if st.button("🏁 FINALIZAR EXAMEN", type="primary"):
                     est = Estudiante(st.session_state.u_id, st.session_state.u_nom, st.session_state.u_mat,st.session_state.u_sala)
                     
@@ -333,7 +315,6 @@ class PortalProctoring:
         
         if clave == infra.CLAVE_DOCENTE:
             st_autorefresh(interval=5000, key="auto_refresh_profe")
-            # --- SECCIÓN: CREAR SALA (Según tu imagen) ---
             with st.expander("🏫 Gestión de Salas", expanded=True):
                 col_s1, col_s2 = st.columns(2)
                 with col_s1:
@@ -348,7 +329,6 @@ class PortalProctoring:
                         st.rerun()
             
             st.divider()
-            # --- SELECTOR DE SALA MAESTRO (Poner antes de las pestañas) ---
             salas_creadas = seguridad.obtener_salas_activas()
             if salas_creadas:
                 sala_objetivo = st.selectbox("🎯 Seleccione Sala para Supervisar", salas_creadas,key="selector_sala_maestro")
@@ -357,14 +337,11 @@ class PortalProctoring:
                 st.warning("No hay salas creadas aún.")
                 st.stop()
             
-            # --- NUEVAS PESTAÑAS (Configuración y Respuestas) ---
             t1, t2, t3, t4, t5 = st.tabs(["📝 Configurar", "📋 Asistencia", "📊 Riesgos IA", "🔍 Detalle Logs", "📥 Respuestas"])
 
             with t1:
-                # Corregido: Usamos sala_objetivo del selector principal
                 st.subheader(f"Configurar Examen para: {sala_objetivo}")
                 
-                # Inicializamos el gestor con el contexto de la sala elegida
                 gestor_sala = GestorExamen(sala_objetivo)
                 
                 tipo_examen = st.selectbox("Modalidad", ["Tradicional (URL Imagen)", "Interactivo (JSON)"], key=f"mod_{sala_objetivo}")
@@ -378,9 +355,7 @@ class PortalProctoring:
             with t2:
                 st.subheader(f"Lista de Asistencia - {sala_objetivo}")
                 if os.path.exists(infra.DB_ASISTENCIA):
-                    # on_bad_lines='skip' ignora filas con errores de columnas en lugar de romper el programa
                     df_asist = pd.read_csv(infra.DB_ASISTENCIA, on_bad_lines='skip')
-                    # Filtrar por la sala seleccionada
                     df_filtrado = df_asist[df_asist["Sala"] == sala_objetivo]
                     if not df_filtrado.empty:
                         st.dataframe(df_filtrado, use_container_width=True)
@@ -399,7 +374,6 @@ class PortalProctoring:
                         df_temp = pd.read_csv(f)
                         
                     if not df_temp.empty:
-                        # Filtrar por sala si la columna existe en el log
                         if "Sala" in df_temp.columns:
                             df_temp = df_temp[df_temp["Sala"] == sala_objetivo]
                         
@@ -407,22 +381,17 @@ class PortalProctoring:
                             resumen.append(df_temp)
                             
                 if resumen:
-                    # Unimos todos los dataframes encontrados
                     df_final = pd.concat(resumen, ignore_index=True)
                     
-                    # --- SOLUCIÓN AL KEYERROR ---
-                    # Identificamos cómo se llama la columna de la alerta (puede ser 'Tipo' o 'Riesgo')
                     posibles_nombres = ["Tipo", "Riesgo", "Alerta", "Evento"]
                     col_encontrada = next((c for c in posibles_nombres if c in df_final.columns), None)
                     
-                    # Construimos la lista de columnas que SI existen
                     columnas_visibles = ["ID", "Nombre"]
                     if col_encontrada:
                         columnas_visibles.append(col_encontrada)
                     if "Hora" in df_final.columns:
                         columnas_visibles.append("Hora")
                         
-                    # Mostramos solo las columnas validadas
                     st.dataframe(df_final[columnas_visibles], use_container_width=True)
                 else:
                     st.success(f"No hay alertas de riesgo en la sala {sala_objetivo}.")
@@ -433,15 +402,12 @@ class PortalProctoring:
                 
                 if os.path.exists(archivo_log):
                     with infra.csv_lock:
-                        # Leemos el log general ignorando líneas mal formadas
                         df_logs = pd.read_csv(archivo_log, on_bad_lines='skip')
                     
-                    # Filtramos por la sala seleccionada
                     if "Sala" in df_logs.columns:
                         df_sala = df_logs[df_logs["Sala"] == sala_objetivo]
                         
                         if not df_sala.empty:
-                            # Agrupamos por ID de estudiante para crear un expander por cada uno
                             estudiantes = df_sala["ID"].unique()
                             
                             for est_id in estudiantes:
@@ -480,7 +446,6 @@ class PortalProctoring:
 
     @staticmethod
     def _inyectar_ia_total_js():
-        # 1. Leemos el archivo JS que acabas de validar
         with open("a.js", "r", encoding="utf-8") as f:
                 codigo_js = f.read()
                 
@@ -492,7 +457,6 @@ class PortalProctoring:
         <script>{codigo_js}</script>
         """, height=1)
 
-# CSS para ocultar el botón del puente
 st.markdown("<style>div[data-testid='stButton'] button:has(div:contains('ALERTA_IA_JS')) {display: none;}</style>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
