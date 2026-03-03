@@ -7,7 +7,7 @@ import os
 import threading
 import glob
 from datetime import datetime
-from abc import ABC
+from abc import ABC,abstractmethod
 import json 
 
 st.set_page_config(page_title="Proctoring FIEE UNI", layout="wide", page_icon="🏛️")
@@ -65,10 +65,45 @@ infra = Infraestructura()
 class GestorSeguridad:
     def __init__(self):
         self.archivo = infra.DB_SALAS
+        self.__archivo_admin = "admin_config.json"
         if not os.path.exists(self.archivo):
             with open(self.archivo, "w") as f:
                 json.dump({}, f)
+        
+        if not os.path.exists(self.__archivo_admin):
+            self.__guardar_master_pw(infra.CLAVE_DOCENTE)
+    
+    def guardar_perfil_maestro(self, nombre, curso, seccion):
+        with open(self.__archivo_admin, "r") as f:
+            data = json.load(f)
+        
+        data["perfil"] = {"nombre": nombre, "curso": curso, "seccion": seccion}
+        
+        with open(self.__archivo_admin, "w") as f:
+            json.dump(data, f)
+    
+    def obtener_perfil_maestro(self):
+        if os.path.exists(self.__archivo_admin):
+            with open(self.__archivo_admin, "r") as f:
+                data = json.load(f)
+                return data.get("perfil", {"nombre": "Ing. Tutor UNI", "curso": "POO", "seccion": "N"})
+        return {"nombre": "Ing. Tutor UNI", "curso": "POO", "seccion": "N"}
+    
+    def __guardar_master_pw(self, password):
+        with open(self.__archivo_admin, "w") as f:
+            json.dump({"root_pwd": password}, f)
 
+    def validar_maestro(self, clave_ingresada):
+        with open(self.__archivo_admin, "r") as f:
+            data = json.load(f)
+            return data.get("root_pwd") == clave_ingresada
+
+    def cambiar_clave_maestra(self, clave_actual, nueva_clave):
+        if self.validar_maestro(clave_actual):
+            self.__guardar_master_pw(nueva_clave)
+            return True
+        return False
+    
     def crear_sala(self, nombre, contrasena):
         with open(self.archivo, "r") as f:
             salas = json.load(f)
@@ -89,12 +124,21 @@ class Persona(ABC):
     def __init__(self, uid, nombre):
         self.uid = uid
         self.nombre = nombre
+        
+    @abstractmethod
+    def mostrar_perfil(self):
+        pass
 
 class Estudiante(Persona):
     def __init__(self, uid, nombre, materia, sala):
         super().__init__(uid, nombre)
         self.materia = materia
         self.sala = sala
+        
+    def mostrar_perfil(self):
+        st.sidebar.success(f"**Alumno:** {self.nombre}")
+        st.sidebar.markdown(f"**Cod:** {self.uid} | **Curso:** {self.materia}")
+        st.sidebar.divider()
 
     def registrar_falta(self, evento, peso):
         st.session_state.puntos_sospecha += peso
@@ -126,6 +170,17 @@ class Estudiante(Persona):
             df = pd.DataFrame([datos])
             df.to_csv(archivo, mode='a', index=False, header=not os.path.exists(archivo))
 
+class Profesor(Persona):
+    def __init__(self, uid, nombre, curso, seccion):
+        super().__init__(uid, nombre)
+        self.curso = curso
+        self.seccion = seccion
+
+    def mostrar_perfil(self):
+        st.sidebar.info(f"👨‍🏫 **Docente:** {self.nombre}")
+        st.sidebar.markdown(f"**Curso:** {self.curso}\n\n**Sección:** {self.seccion}")
+        st.sidebar.divider()
+        
 class GestorExamen:
     def __init__(self,sala):
         self.sala = sala
@@ -245,6 +300,14 @@ class PortalProctoring:
                         else:
                             st.error("Complete todos los campos.")
         else:
+            est = Estudiante(
+                st.session_state.u_id, 
+                st.session_state.u_nom, 
+                st.session_state.u_mat, 
+                st.session_state.u_sala
+            )
+            est.mostrar_perfil()
+            
             st.markdown(f"<h2 style='color: #800000; border-bottom: 2px solid #800000; padding-bottom: 10px;'>✍️ Examen: {st.session_state.u_mat}</h2>", unsafe_allow_html=True)
             
             col_izq, col_der = st.columns([2.5, 1])
@@ -313,7 +376,18 @@ class PortalProctoring:
         seguridad = GestorSeguridad()
         clave = st.sidebar.text_input("Contraseña Docente", type="password")
         
-        if clave == infra.CLAVE_DOCENTE:
+        if seguridad.validar_maestro(clave):
+            curso_actual = st.session_state.get("selector_sala_maestro", "Por definir")
+            datos_p = seguridad.obtener_perfil_maestro()
+            profe = Profesor(
+                uid="DOC-001", 
+                nombre=datos_p['nombre'], 
+                curso=datos_p['curso'], 
+                seccion=datos_p['seccion']
+            )
+
+            profe.mostrar_perfil()
+    
             st_autorefresh(interval=5000, key="auto_refresh_profe")
             with st.expander("🏫 Gestión de Salas", expanded=True):
                 col_s1, col_s2 = st.columns(2)
@@ -337,7 +411,7 @@ class PortalProctoring:
                 st.warning("No hay salas creadas aún.")
                 st.stop()
             
-            t1, t2, t3, t4, t5 = st.tabs(["📝 Configurar", "📋 Asistencia", "📊 Riesgos IA", "🔍 Detalle Logs", "📥 Respuestas"])
+            t1, t2, t3, t4, t5, t6, t7 = st.tabs(["📝 Configurar", "📋 Asistencia", "📊 Riesgos IA", "🔍 Detalle Logs", "📥 Respuestas", "🏆 Resumen de Riesgos","⚙️ Ajustes"])
 
             with t1:
                 st.subheader(f"Configurar Examen para: {sala_objetivo}")
@@ -441,6 +515,101 @@ class PortalProctoring:
                     st.download_button(f"Descargar Entregas {sala_objetivo}", infra.convertir_a_csv(df_resp), f"respuestas_{sala_objetivo}.csv")
                 else:
                     st.info("Aún no hay exámenes entregados.")
+                    
+            with t6:
+                st.subheader(f"🏆 Ranking de Sospecha - {sala_objetivo}")
+                archivo_log = "log_general_proctoring.csv"
+                
+                if os.path.exists(archivo_log):
+                    with infra.csv_lock:
+                        df_logs = pd.read_csv(archivo_log, on_bad_lines='skip')
+                    
+                    if not df_logs.empty and "Sala" in df_logs.columns:
+                        df_sala = df_logs[df_logs["Sala"] == sala_objetivo]
+                        
+                        if not df_sala.empty:
+                            # 1. Agrupación y cálculo del máximo riesgo por alumno
+                            resumen_riesgo = df_sala.groupby(['ID', 'Nombre']).agg({
+                                'Riesgo': 'max'
+                            }).reset_index()
+
+                            # 2. Implementación de la Lógica de Clasificación (Petición del usuario)
+                            def definir_estado(puntos):
+                                if puntos >= 9: return "🔴 CRÍTICO"
+                                if puntos >= 6: return "🟠 MEDIO"
+                                if puntos >= 3: return "🟡 MODERADO"
+                                return "🟢 BAJO"
+
+                            resumen_riesgo['Estado'] = resumen_riesgo['Riesgo'].apply(definir_estado)
+
+                            # 3. Ordenar de mayor a menor riesgo
+                            resumen_riesgo = resumen_riesgo.sort_values(by='Riesgo', ascending=False)
+
+                            # 4. Mostrar métricas de impacto
+                            col_m1, col_m2 = st.columns(2)
+                            with col_m1:
+                                top_est = resumen_riesgo.iloc[0]
+                                st.metric("Máximo Infractor", top_est['Nombre'], f"{top_est['Riesgo']} pts", delta_color="inverse")
+                            with col_m2:
+                                total_criticos = len(resumen_riesgo[resumen_riesgo['Riesgo'] >= 9])
+                                st.metric("Alumnos en Crítico", total_criticos)
+
+                            # 5. Tabla con Estilos (Pandas Styler)
+                            st.write("### Resumen Consolidado")
+                            
+                            def color_estado(val):
+                                color = 'white'
+                                if "CRÍTICO" in val: color = '#ff4b4b'
+                                elif "MEDIO" in val: color = '#ffa500'
+                                elif "NORMAL" in val: color = '#f1c40f'
+                                elif "BAJO" in val: color = '#2ecc71'
+                                return f'color: {color}; font-weight: bold'
+
+                            st.dataframe(
+                                resumen_riesgo.style.applymap(color_estado, subset=['Estado']),
+                                use_container_width=True
+                            )
+
+                            # 6. Visualización Gráfica
+                            st.bar_chart(resumen_riesgo, x="Nombre", y="Riesgo")
+                            
+                        else:
+                            st.info(f"No hay infracciones para la sala {sala_objetivo}.")
+                    else:
+                        st.info("Formato de logs no compatible.")
+                else:
+                    st.info("No se encontró el archivo de logs.")
+                    
+            with t7:
+                st.subheader("Configuración de Acceso")
+                perfil_actual = seguridad.obtener_perfil_maestro()
+                
+                with st.form("form_editar_perfil"):
+                    col_n, col_c, col_s = st.columns(3)
+                    
+                    nuevo_nom = col_n.text_input("Nombre Docente", value=perfil_actual['nombre'])
+                    nuevo_cur = col_c.text_input("Curso", value=perfil_actual['curso'])
+                    nueva_sec = col_s.text_input("Sección", value=perfil_actual['seccion'])
+                    
+                    if st.form_submit_button("ACTUALIZAR DATOS DE PERFIL"):
+                        seguridad.guardar_perfil_maestro(nuevo_nom, nuevo_cur, nueva_sec)
+                        st.success("✅ Perfil actualizado correctamente.")
+                        st.rerun()
+
+                st.divider()
+
+                st.subheader("🔐 Seguridad de Acceso")
+                
+                with st.form("cambio_clave_maestra"):
+                    old_p = st.text_input("Clave Actual", type="password")
+                    new_p = st.text_input("Nueva Clave", type="password")
+                    
+                    if st.form_submit_button("CAMBIAR CONTRASEÑA MAESTRA"):
+                        if seguridad.cambiar_clave_maestra(old_p, new_p):
+                            st.success("✅ Clave actualizada. Use la nueva clave al iniciar sesión.")
+                            st.rerun()
+                        else:
+                            st.error("❌ La clave actual es incorrecta.")
         else:
             st.warning("Por favor, ingrese la clave docente en la barra lateral.")
 
