@@ -68,6 +68,7 @@ Monitoreo: Observar el panel de "Riesgos" donde se listan los estudiantes con co
 
 ## 🔧 Estructura del Proyecto
 ArgosUNI/
+
 ├── .streamlit/       
 ├── src/
 │   ├── models/         
