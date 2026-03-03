@@ -6,7 +6,7 @@
 
 ## 📝 Descripción
 
-**ArgosUNI** es una plataforma avanzada de proctoring diseñada para garantizar la integridad académica en exámenes virtuales. Mediante el uso de **Inteligencia Artificial** y visión computacional, el sistema monitorea en tiempo real el comportamiento del estudiante, detectando posibles infracciones de manera automática y local (preservando la privacidad).
+**ArgosUNI** es un sistema web desarrollado en Streamlit y desplegado en Internet mediante tunelización segura, orientado a la supervisión y control académico en tiempo real, a través de salas privadas con mecanismos de autenticación y gestión de acceso.
 
 ## ✨ Características Principales
 
@@ -37,3 +37,51 @@
 ```bash
 git clone [https://github.com/tu-usuario/ArgosUNI.git](https://github.com/tu-usuario/ArgosUNI.git)
 cd ArgosUNI
+```
+2. **Crea un entorno virtual**
+```bash
+python -m venv venv
+# Activar en Windows:
+.\venv\Scripts\activate
+# Activar en Linux/Mac:
+source venv/bin/activate
+```
+3. **Instala las dependencias**
+```bash
+pip install -r requirements.txt
+```
+4. **Ejecuta la aplicación**
+```bash
+streamlit run app_vigilancia.py
+```
+
+## 📋 Guía de Uso
+-Para el Estudiante
+Ingreso: Registrar Nombre, Código UNI y seleccionar la sala.
+Cámara: Permitir acceso a la webcam cuando el navegador lo solicite.
+Evaluación: No cambiar de pestaña ni minimizar el navegador, de lo contrario el sistema anulará el examen automáticamente.
+
+-Para el Docente
+Acceso: Login con credenciales de administrador.
+Configuración: Cargar el archivo examen_config.json con las preguntas.
+Monitoreo: Observar el panel de "Riesgos" donde se listan los estudiantes con conductas sospechosas.
+
+## 🔧 Estructura del Proyecto
+ArgosUNI/
+├── .streamlit/          # Configuración de tema y puerto
+├── src/
+│   ├── models/          # Modelos de IA (TensorFlow.js)
+│   ├── components/      # Componentes de WebRTC y Video
+│   └── utils/           # Validadores de JSON y formatos
+├── app_vigilancia.py    # Punto de entrada principal
+└── requirements.txt     # Dependencias del proyecto
+
+## 📞 Contacto y Créditos
+
+Desarrolladores:
+-Richard De La Cruz Victoria
+-Eddy Hancco Mamani
+-Kevin Mamani Mamani
+Institución: Universidad Nacional de Ingeniería (FIEE)
+
+
