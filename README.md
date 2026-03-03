@@ -1,4 +1,4 @@
-# ArgosUNI: Sistema Web de Supervisión y Control Académico 🛡️
+# ArgosUNI: Sistema Web de Supervisión y Control Académico en Entornos de Evaluación Virtual 🛡️
 
 [![Python](https://img.shields.io/badge/python-v3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Streamlit](https://img.shields.io/badge/streamlit-v1.20+-red.svg)](https://streamlit.io/)
