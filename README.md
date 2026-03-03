@@ -68,20 +68,24 @@ Monitoreo: Observar el panel de "Riesgos" donde se listan los estudiantes con co
 
 ## 🔧 Estructura del Proyecto
 ArgosUNI/
-├── .streamlit/          # Configuración de tema y puerto
+├── .streamlit/       
 ├── src/
-│   ├── models/          # Modelos de IA (TensorFlow.js)
-│   ├── components/      # Componentes de WebRTC y Video
-│   └── utils/           # Validadores de JSON y formatos
-├── app_vigilancia.py    # Punto de entrada principal
-└── requirements.txt     # Dependencias del proyecto
+│   ├── models/         
+│   ├── components/    
+│   └── utils/        
+├── app_vigilancia.py   
+└── requirements.txt   
 
 ## 📞 Contacto y Créditos
 
 Desarrolladores:
+
 -Richard De La Cruz Victoria
+
 -Eddy Hancco Mamani
+
 -Kevin Mamani Mamani
+
 Institución: Universidad Nacional de Ingeniería (FIEE)
 
 
